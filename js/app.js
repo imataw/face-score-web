@@ -440,15 +440,22 @@
   // modelReady 用显式标志, hook 在模型就绪后才给出, 自动化可 {轮询}
   var modelReady = false;
   (async function () {
-    try {
-      if (window.__FM) window.__FM.load();          // 启动官方 MediaPipe 引擎
-      await loadModel();                             // ONNX 兜底
-      modelReady = true;
-      loop();
-    } catch (e) {
-      setDot('error', '模型加载失败: ' + (e && e.message));
-      log('初始化失败: ' + (e && e.message), true);
+    // 主引擎: MediaPipe FaceLandmarker(必须就绪)
+    var fmOk = false;
+    if (window.__FM) {
+      try { await window.__FM.load(); fmOk = !!(window.__FM.isReady && window.__FM.isReady()); }
+      catch (e) { log('MediaPipe 引擎加载失败: ' + (e && e.message), true); }
     }
+    // 兜底: ONNX 尽力加载, 失败不致命(无 ort 资源时仍可用 MediaPipe)
+    var onnxOk = false;
+    try { await loadModel(); onnxOk = !!(S.session); }
+    catch (e) { log('ONNX 兜底不可用(仅用 MediaPipe): ' + (e && e.message), true); }
+
+    modelReady = true;
+    if (fmOk) setDot('ready', '引擎就绪');
+    else if (onnxOk) setDot('ready', '引擎就绪(ONNX)');
+    else setDot('error', '模型加载失败');
+    loop();
   })();
 
   // 调试/自动化挂钩(模型就绪后才真正可用)
