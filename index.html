@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>AI 颜值分 · Web 版</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <h1>AI 颜值分</h1>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="status">
+          <span id="status-dot" class="dot"></span>
+          <span id="status-text">初始化</span>
+        </div>
+        <button id="btn-debug" class="dbg-btn" title="查看运行日志">⚙</button>
+      </div>
+    </header>
+
+    <section id="stage">
+      <video id="cam" playsinline autoplay muted></video>
+      <canvas id="overlay"></canvas>
+      <div id="empty-hint">
+        <div class="empty-inner">
+          <img class="empty-gif" src="img/3.gif" alt="人脸识别动画" />
+          <p class="empty-title">等待画面…</p>
+          <p class="empty-sub">点击下方「📷 摄像头」开始实时检测，<br>或「🖼️ 选择照片」上传你的正脸照<br>即可自动生成 <b>颜值分</b></p>
+          <div class="empty-tips">
+            <span>● 正脸 · 正对镜头</span>
+            <span>● 光线均匀更准</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel">
+      <div id="score-area">
+        <div class="score-num" id="score">--</div>
+        <div class="score-label">颜值分</div>
+        <progress id="scorebar" max="100" value="0"></progress>
+      </div>
+      <div id="metrics"></div>
+    </section>
+
+    <footer id="actions">
+      <button id="btn-camera">📷 摄像头</button>
+      <button id="btn-pick">🖼️ 选择照片</button>
+      <input type="file" id="file" accept="image/*" hidden />
+    </footer>
+  </div>
+
+  <!-- 调试日志面板: 点顶栏 ⚙ 打开 -->
+  <div id="debug" class="hidden">
+    <div class="dbg-head">
+      <b>运行日志</b>
+      <span class="dbg-actions">
+        <button id="dbg-clear" class="dbg-mini">清空</button>
+        <button id="dbg-close" class="dbg-mini">关闭</button>
+      </span>
+    </div>
+    <div id="dbg-body"></div>
+  </div>
+
+  <!-- onnxruntime-web UMD (备用引擎) -->
+  <script src="ort/ort.min.js"></script>
+  <!-- 官方 MediaPipe FaceLandmarker(主引擎) -->
+  <script src="mp/facemesh.js"></script>
+  <!-- 应用逻辑 -->
+  <script src="js/app.js"></script>
+  <!-- 全局错误捕获: 写入内存日志缓冲(debug 面板可见), 不进页面 -->
+  <script>
+    (function () {
+      function push(msg) {
+        if (window.__log) window.__log(msg, true);   // 进 debug 缓冲 + 控制台
+        else console.error(msg);
+      }
+      window.addEventListener('error', function (e) {
+        var t = e.error && (e.error.message || '') || e.message || '';
+        var stack = e.error && e.error.stack ? e.error.stack.split('\n').slice(0, 2).join(' | ') : '';
+        push('⚠️ ' + (e.filename || '') + ':' + (e.lineno || '') + ' ' + t + ' ' + stack);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        push('⚠️ Promise: ' + (e.reason && (e.reason.message || e.reason) || e));
+      });
+    })();
+  </script>
+</body>
+</html>

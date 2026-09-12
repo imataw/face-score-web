@@ -1,0 +1,11 @@
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.log
+
+# 依赖（如有）
+node_modules/
+npm-debug.log*
+
+# 本地测试产物
+*.tmp
