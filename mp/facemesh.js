@@ -9,10 +9,10 @@
 
   function doInit(wasmBase) {
     return (async function () {
-      var m = await import('/mp/vision_bundle.mjs');   // 绝对路径(相对页面根)
+      var m = await import(new URL('mp/vision_bundle.mjs', location.href).href);   // 绝对URL(兼容 dev / GitHub Pages 子路径 / Android)
       var vision = await m.FilesetResolver.forVisionTasks(wasmBase);
       var face = await m.FaceLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: '/mp/face_landmarker.task', delegate: 'CPU' },
+        baseOptions: { modelAssetPath: new URL('mp/face_landmarker.task', location.href).href, delegate: 'CPU' },
         runningMode: 'IMAGE',
         numFaces: 1,
         outputFacialTransformationMatrixes: false,
@@ -27,7 +27,7 @@
   function load() {
     if (pending) return pending;
     pending = (async function () {
-      try { await doInit('/mp'); console.log('[facemesh] 本地 wasm 加载成功'); return; }
+      try { await doInit(new URL('mp/', location.href).href); console.log('[facemesh] 本地 wasm 加载成功'); return; }
       catch (e1) {
         console.warn('[facemesh] 本地失败, 转 CDN:', e1 && e1.message);
         try { await doInit('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'); return; }

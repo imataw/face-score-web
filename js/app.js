@@ -110,7 +110,7 @@
     S.model = ort;
     // 指定 wasm 位置 + 强制单线程(避免 worker 依赖, 更稳)
     if (ort.env && ort.env.wasm) {
-      ort.env.wasm.wasmPaths = '/ort/';        // 绝对根路径 => 新 URL('ory.js', '/ort/')=  /ort/ort-wasm...
+      ort.env.wasm.wasmPaths = 'ort/';        // 相对路径(适配 GitHub Pages 子路径)
       if (ort.env.wasm.numThreads > 1) ort.env.wasm.numThreads = 1;
     }
     setDot('loading', '加载模型 models/face_landmark.onnx ...');
@@ -440,21 +440,32 @@
   // modelReady 用显式标志, hook 在模型就绪后才给出, 自动化可 {轮询}
   var modelReady = false;
   (async function () {
-    // 主引擎: MediaPipe FaceLandmarker(必须就绪)
+    // 主引擎: MediaPipe — 触发加载并轮询等它就绪(就绪即刻把状态标为正确)
     var fmOk = false;
-    if (window.__FM) {
-      try { await window.__FM.load(); fmOk = !!(window.__FM.isReady && window.__FM.isReady()); }
-      catch (e) { log('MediaPipe 引擎加载失败: ' + (e && e.message), true); }
+    var start = Date.now();
+    if (window.__FM) window.__FM.load();
+    while (Date.now() - start < 15000) {
+      if (window.__FM && window.__FM.isReady && window.__FM.isReady()) { fmOk = true; break; }
+      await new Promise(function (r) { setTimeout(r, 250); });
     }
-    // 兜底: ONNX 尽力加载, 失败不致命(无 ort 资源时仍可用 MediaPipe)
-    var onnxOk = false;
-    try { await loadModel(); onnxOk = !!(S.session); }
-    catch (e) { log('ONNX 兜底不可用(仅用 MediaPipe): ' + (e && e.message), true); }
-
-    modelReady = true;
+    modelReady = fmOk;
     if (fmOk) setDot('ready', '引擎就绪');
-    else if (onnxOk) setDot('ready', '引擎就绪(ONNX)');
-    else setDot('error', '模型加载失败');
+    else setDot('loading', '正在加载引擎…');
+
+    // ONNX 兜底: 主引擎已就绪则直接跳过, 避免覆盖就绪状态
+    if (fmOk) {
+      log('MediaPipe 主引擎就绪, 跳过 ONNX 兜底', false);
+    } else {
+      (async function () {
+        try {
+          await loadModel();
+          if (!!S.session) { modelReady = true; setDot('ready', '引擎就绪(ONNX)'); }
+        } catch (e) {
+          log('ONNX 兜底不可用(仅用 MediaPipe): ' + (e && e.message), true);
+          setDot('error', '模型加载失败');
+        }
+      })();
+    }
     loop();
   })();
 
